@@ -1,1 +1,425 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Which Declining Page Should a Reviewer Fix First? — Maryam Fatima</title>
+<meta name="description" content="Scoring content-refresh opportunities with logistic regression vs. a rule-based baseline, on 30,000 anonymized FlyRank search-performance pages.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F4F1;
+    --paper-raised:#FFFFFF;
+    --ink:#16213E;
+    --ink-soft:#4A5578;
+    --amber:#D98E3B;
+    --amber-soft:#F4E1C6;
+    --sage:#4C7A73;
+    --sage-soft:#DCE8E5;
+    --line:#D8D6CF;
+    --max:760px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-size:17px;
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--amber-soft);}
+  a{color:var(--ink);text-decoration-color:var(--amber);text-underline-offset:3px;}
+  a:hover{color:var(--amber);}
+
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 24px;}
+
+  header.hero{
+    padding:76px 0 56px;
+    border-bottom:1px solid var(--line);
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:22px;
+  }
+  .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--amber);}
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:clamp(30px,5vw,44px);
+    line-height:1.14;
+    letter-spacing:-.01em;
+    margin:0 0 22px;
+  }
+  .dek{
+    font-size:19px;
+    color:var(--ink-soft);
+    max-width:62ch;
+    margin:0 0 30px;
+  }
+  .byline{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    color:var(--ink-soft);
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px 18px;
+  }
+
+  /* --- signature element: ranked review queue --- */
+  .queue{
+    margin-top:40px;
+    border:1px solid var(--line);
+    background:var(--paper-raised);
+    border-radius:10px;
+    overflow:hidden;
+  }
+  .queue-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 18px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    border-bottom:1px solid var(--line);
+  }
+  .qrow{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:11px 18px;
+    border-bottom:1px solid var(--line);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+  }
+  .qrow:last-child{border-bottom:none;}
+  .qrank{width:20px;color:var(--ink-soft);}
+  .qbar-track{flex:1;height:8px;background:var(--paper);border-radius:4px;overflow:hidden;}
+  .qbar-fill{height:100%;background:var(--amber);border-radius:4px;}
+  .qscore{width:44px;text-align:right;color:var(--ink);}
+  .qtag{
+    font-size:10.5px;
+    padding:2px 8px;
+    border-radius:20px;
+    background:var(--sage-soft);
+    color:var(--sage);
+    white-space:nowrap;
+  }
+
+  section{padding:52px 0;border-bottom:1px solid var(--line);}
+  section:last-of-type{border-bottom:none;}
+  h2{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:26px;
+    margin:0 0 8px;
+    letter-spacing:-.01em;
+  }
+  .sec-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:var(--amber);
+    letter-spacing:.06em;
+    display:block;
+    margin-bottom:10px;
+  }
+  h3{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:19px;
+    margin:28px 0 10px;
+  }
+  p{margin:0 0 16px;}
+  ul,ol{margin:0 0 16px;padding-left:22px;}
+  li{margin-bottom:8px;}
+  strong{font-weight:600;}
+  code{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.88em;
+    background:var(--sage-soft);
+    color:var(--sage);
+    padding:1.5px 6px;
+    border-radius:4px;
+  }
+
+  .callout{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-left:3px solid var(--amber);
+    border-radius:6px;
+    padding:16px 20px;
+    margin:20px 0;
+    font-size:15.5px;
+  }
+  .callout.sage{border-left-color:var(--sage);}
+
+  figure{margin:28px 0;}
+  figure img{width:100%;height:auto;display:block;border-radius:8px;border:1px solid var(--line);}
+  figcaption{
+    font-size:14px;
+    color:var(--ink-soft);
+    margin-top:10px;
+    padding-left:2px;
+    border-left:2px solid var(--amber);
+    padding-left:10px;
+  }
+
+  table{width:100%;border-collapse:collapse;margin:20px 0;font-size:15px;}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);}
+  th{font-family:'IBM Plex Mono',monospace;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-weight:500;}
+  tr.win td{font-weight:600;}
+  tr.win td:first-child{color:var(--amber);}
+  td.num{font-family:'IBM Plex Mono',monospace;font-size:14px;}
+
+  .reco{
+    display:flex;
+    gap:16px;
+    padding:16px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .reco:last-child{border-bottom:none;}
+  .reco-n{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:22px;
+    color:var(--amber);
+    min-width:28px;
+  }
+  .reco-body h4{margin:0 0 4px;font-size:16px;font-weight:600;font-family:'Inter',sans-serif;}
+  .reco-body p{margin:0;font-size:15px;color:var(--ink-soft);}
+
+  .limits li::marker{color:var(--amber);}
+
+  footer{
+    padding:44px 0 70px;
+    font-size:14px;
+    color:var(--ink-soft);
+  }
+  footer a{font-weight:500;}
+  .credit-box{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:18px 20px;
+    margin-top:18px;
+  }
+
+  @media (max-width:600px){
+    header.hero{padding:52px 0 40px;}
+    section{padding:38px 0;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span class="dot"></span>Applied Search Intelligence · FlyRank ML Internship</div>
+    <h1>Which declining page should a reviewer fix first?</h1>
+    <p class="dek">A logistic-regression ranking model scores content-refresh opportunities on 30,000 anonymized search-performance pages — and roughly halves how often a reviewer's top picks turn out to be wrong, compared to a hand-built staleness/CTR rule.</p>
+    <div class="byline">
+      <span>Maryam Fatima</span><span>·</span>
+      <span>ML Track, Lane 2 — Refresh / Content Opportunity Scoring</span><span>·</span>
+      <span>August 2026</span>
+    </div>
+
+    <div class="queue">
+      <div class="queue-head"><span>Reviewer queue, ranked by model score</span><span>top 5 of 6,163</span></div>
+      <div class="qrow"><span class="qrank">1</span><div class="qbar-track"><div class="qbar-fill" style="width:96%"></div></div><span class="qscore">0.96</span><span class="qtag">flag</span></div>
+      <div class="qrow"><span class="qrank">2</span><div class="qbar-track"><div class="qbar-fill" style="width:93%"></div></div><span class="qscore">0.93</span><span class="qtag">flag</span></div>
+      <div class="qrow"><span class="qrank">3</span><div class="qbar-track"><div class="qbar-fill" style="width:91%"></div></div><span class="qscore">0.91</span><span class="qtag">flag</span></div>
+      <div class="qrow"><span class="qrank">4</span><div class="qbar-track"><div class="qbar-fill" style="width:89%"></div></div><span class="qscore">0.89</span><span class="qtag">flag</span></div>
+      <div class="qrow"><span class="qrank">5</span><div class="qbar-track"><div class="qbar-fill" style="width:87%"></div></div><span class="qscore">0.87</span><span class="qtag">flag</span></div>
+    </div>
+  </div>
+</header>
+
+<section id="abstract">
+  <div class="wrap">
+    <span class="sec-num">Abstract</span>
+    <p>Given thousands of content pages, which ones should a content reviewer look at first for a possible refresh? Using an anonymized 30,000-page slice of FlyRank's search-performance data, three classifiers — logistic regression, a shallow decision tree, and a random forest — were trained to score pages by declining-trend probability and evaluated against a hand-built staleness/CTR rule baseline on a client-held-out test split. Logistic regression ranked test pages best, reaching <strong>74.0% precision</strong> in its top 50 picks versus <strong>42.0%</strong> for the rule baseline and <strong>51.1%</strong> for random ranking — cutting wrong review picks in the top 50 roughly in half (13 of 50, vs. 29 of 50 for the rule). Reviewers can use the model's ranked queue, cross-checked against the rule engine's reason codes, to prioritize refresh work instead of reviewing pages in an arbitrary order. All results are observed and decision-support only: a single anonymized snapshot, correlational, and not a causal claim about what drives search-ranking decline.</p>
+  </div>
+</section>
+
+<section id="intro">
+  <div class="wrap">
+    <span class="sec-num">01 — Introduction</span>
+    <h2>The decision this supports</h2>
+    <p>A content reviewer with a few hours a week and thousands of live pages cannot check every page for decline. They need a short, trustworthy list: which pages to open first. Getting that list wrong costs reviewer time on healthy pages while a genuinely declining page sits unreviewed.</p>
+    <p>The FlyRank internship's Week-4 assignment (ML-07) answered this with a transparent hand-rule: flag a page if it is <em>stale and still visible</em>, or if it <em>ranks well but converts poorly</em>. That rule is easy to explain but, as shown below, misses most of the truly declining pages in its own top picks. This paper asks whether a simple learned model — trained on the same features a reviewer already has — can do meaningfully better, and whether it can still explain itself well enough for a reviewer to trust it.</p>
+  </div>
+</section>
+
+<section id="data">
+  <div class="wrap">
+    <span class="sec-num">02 — Data</span>
+    <h2>30,000 anonymized pages, one row per content item</h2>
+    <p>The dataset is <code>content_refresh_anonymized.csv</code>, part of the FlyRank ML Internship starter release — an anonymized, page-level slice drawn from FlyRank's production search-intelligence warehouse (the full warehouse spans on the order of tens of millions of rows across many clients; this project used the 30,000-row anonymized cut made available for the internship).</p>
+    <ul>
+      <li><strong>Grain:</strong> one row = one content page (<code>content_id</code>), grouped under a pseudonymous <code>client_id</code>.</li>
+      <li><strong>Label:</strong> <code>is_declining_label</code> = 1 when the release's <code>trend_direction</code> field reads "down" — base rate 54.2% (16,236 of 30,000 pages).</li>
+      <li><strong>Excluded on purpose:</strong> <code>client_id</code> is used only to group the train/test split — the data dictionary is explicit that it is a pseudonym for joins, never a model feature.</li>
+      <li><strong>Public-safe:</strong> every page and client identifier in this release is a hashed placeholder; no domain, URL, or private search query appears anywhere in the source data.</li>
+      <li><strong>What it can't tell us:</strong> the anonymized release exposes no calendar dates, so seasonality can't be checked directly — recency is captured only indirectly, through <code>content_age_days</code> and <code>days_since_last_update</code>. This limitation resurfaces directly in the error analysis below.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="method">
+  <div class="wrap">
+    <span class="sec-num">03 — Methodology</span>
+    <h2>A ranking problem, evaluated the way a reviewer experiences it</h2>
+    <p>This is Lane 2 — Refresh / Content Opportunity Scoring — framed as a <strong>ranking</strong> question ("which pages should a reviewer look at first?"), not a plain yes/no classification. That means the metric that matters is precision at the top of the queue, not overall accuracy.</p>
+
+    <h3>The baseline</h3>
+    <p>The Week-4 rule (ML-07) scores a page using two independently-verified signals:</p>
+    <ul>
+      <li><strong>Staleness:</strong> pages untouched 180+ days show a higher decline rate (61.1%) than fresher pages (51.2% for &lt;90 days) — confirmed on this data before being used.</li>
+      <li><strong>Position vs. CTR:</strong> pages ranking well (position 1–3) see far higher click-through (1.47) than poorly-ranked pages (0.21 at position 20+) — confirmed the same way.</li>
+    </ul>
+    <p>A page scores <code>stale_visible_page</code> if it's stale and still gets ≥500 impressions in 90 days, or <code>low_ctr_visible_page</code> if it ranks in the top 20 with CTR below 0.5 and is visible; otherwise <code>no_signal</code>.</p>
+
+    <h3>The models</h3>
+    <p>Following a "readable → stronger, add complexity only when it earns its place" approach: Logistic Regression first (a clean coefficient story), a depth-4 Decision Tree (still printable and readable), and a Random Forest (300 trees, depth 8) as the stronger candidate — worth keeping only if it actually beats the simpler models.</p>
+    <p><strong>Features:</strong> 15 numeric signals (log-scaled impressions and clicks, days with impressions/sessions, content age, days since update, CTR, average position, engagement rate, scroll rate, word count, character count, search volume, competition, CPC) plus explicit missingness flags for the six columns prone to gaps, and 6 one-hot-encoded categorical fields (content type, main intent, age tier, freshness tier, impression tier, position tier).</p>
+
+    <h3>Split and leakage checks</h3>
+    <p>An 80/20 <strong>client-grouped</strong> split (<code>GroupShuffleSplit</code> on <code>client_id</code>, seed 42): 23,837 training rows, 6,163 test rows, <strong>zero client overlap</strong> between the two — the same grouping logic used to build the Week-4 baseline queue, so the comparison below is apples-to-apples. <code>client_id</code> itself never enters the feature set, and a programmatic check confirmed no future-window or label-derived column was used as a feature — only signals a reviewer could observe before deciding.</p>
+  </div>
+</section>
+
+<section id="results">
+  <div class="wrap">
+    <span class="sec-num">04 — Results</span>
+    <h2>Logistic regression wins at both review depths</h2>
+    <p>All five approaches were scored on the identical held-out test split, using the same precision@K metric a reviewer actually experiences: of the top K pages sent for review, how many were truly declining?</p>
+
+    <table>
+      <thead><tr><th>Approach</th><th>Precision@20</th><th>Precision@50</th></tr></thead>
+      <tbody>
+        <tr class="win"><td>Logistic Regression</td><td class="num">0.850</td><td class="num">0.740</td></tr>
+        <tr><td>Random Forest</td><td class="num">0.550</td><td class="num">0.580</td></tr>
+        <tr><td>Decision Tree (depth 4)</td><td class="num">0.450</td><td class="num">0.580</td></tr>
+        <tr><td>Random ranking (base rate)</td><td class="num">0.511</td><td class="num">0.511</td></tr>
+        <tr><td>Rule baseline (Week 4)</td><td class="num">0.400</td><td class="num">0.420</td></tr>
+      </tbody>
+    </table>
+
+    <figure>
+      <img src="assets/precision_chart.png" alt="Bar chart comparing precision@20 and precision@50 across logistic regression, random forest, decision tree, random baseline, and rule baseline">
+      <figcaption>Logistic Regression is the only approach that clears 70% precision at either depth — and it's the simplest model tried.</figcaption>
+    </figure>
+
+    <h3>Where the model goes wrong</h3>
+    <p>Of the model's top 50 ranked pages, <strong>13 were false positives</strong> — versus <strong>29 false positives</strong> in the rule baseline's own top 50. In other words, a reviewer working through the model's queue wastes review time on roughly 1 in 4 pages instead of roughly 3 in 5.</p>
+    <p>Permutation importance shows the ranking leans heavily on two visibility signals:</p>
+
+    <figure>
+      <img src="assets/importance_chart.png" alt="Horizontal bar chart of permutation feature importance, showing log impressions and log clicks as the top two features">
+      <figcaption>log_impressions_90d and log_clicks_90d together explain more ranking signal than the next six features combined.</figcaption>
+    </figure>
+
+    <div class="callout">
+      <strong>Concrete failure pattern:</strong> the model's three clearest wrong picks were all pages with high impressions/clicks and a weak-looking position or CTR — the same profile as a declining page — but whose actual trend was "up" or "stable." Example: a page scored 0.96 (near-certain decline) with 290 impressions and 0% CTR, but its logged trend was "up." The model can't see <em>why</em> — seasonality, a recent refresh, a promo — from these features alone, so it over-indexes on the visibility signal.
+    </div>
+  </div>
+</section>
+
+<section id="limits">
+  <div class="wrap">
+    <span class="sec-num">05 — Limitations &amp; honest framing</span>
+    <h2>What this work cannot claim</h2>
+    <ul class="limits">
+      <li><strong>Correlational, not causal.</strong> No experiment was run; the model shows which pages a rule-based label agrees are declining, not what causes decline.</li>
+      <li><strong>The label itself is inherited, not independently verified.</strong> <code>is_declining_label</code> comes from a pre-computed <code>trend_direction</code> field in the anonymized release — its own construction wasn't re-derived from raw time series here.</li>
+      <li><strong>No calendar dates in this release</strong> means seasonality can't be checked directly — and the model's own error analysis (above) suggests seasonal or promo-driven visibility spikes are exactly what it confuses with structural decline.</li>
+      <li><strong>Single split, single seed.</strong> Precision@20/50 are reported from one client-grouped split (seed 42), not averaged across multiple splits — the exact numbers carry some sampling variance.</li>
+      <li><strong>Random Forest underperforming here is not a general claim against tree ensembles</strong> — depth and leaf-size constraints were set for stability on a relatively small (30k-row) sample, not tuned for maximum fit.</li>
+      <li><strong>Sample, not census.</strong> This 30,000-row release is a small anonymized cut of a much larger warehouse; how well these numbers hold on the full data is untested here.</li>
+    </ul>
+    <p>Claims in this paper are <strong>observed</strong> and <strong>decision-support</strong> — a ranked queue to prioritize human review, not a verdict on any individual page.</p>
+  </div>
+</section>
+
+<section id="reco">
+  <div class="wrap">
+    <span class="sec-num">06 — Ranked recommendations</span>
+    <h2>What a reviewer should do with this</h2>
+
+    <div class="reco">
+      <div class="reco-n">1</div>
+      <div class="reco-body">
+        <h4>Route the model's top 20–50 to review first, not the rule's queue</h4>
+        <p>Observed to roughly halve wasted reviews in the top 50 (13 wrong picks vs. 29) compared with the rule-only baseline.</p>
+      </div>
+    </div>
+    <div class="reco">
+      <div class="reco-n">2</div>
+      <div class="reco-body">
+        <h4>Treat model + rule agreement as stronger evidence</h4>
+        <p>When a top-ranked page also carries a <code>stale_visible_page</code> or <code>low_ctr_visible_page</code> reason code from the rule engine, confidence is directional-strong — two independent signals pointing the same way.</p>
+      </div>
+    </div>
+    <div class="reco">
+      <div class="reco-n">3</div>
+      <div class="reco-body">
+        <h4>Sanity-check high-visibility top picks for seasonality before acting</h4>
+        <p>All three concrete wrong picks shared one profile: high impressions/clicks with a weak position or CTR. A 60-second check for a recent promo, seasonal pattern, or already-completed refresh catches this failure mode.</p>
+      </div>
+    </div>
+    <div class="reco">
+      <div class="reco-n">4</div>
+      <div class="reco-body">
+        <h4>Watch impressions and clicks as an early-warning pair</h4>
+        <p><code>log_impressions_90d</code> and <code>log_clicks_90d</code> drive most of the ranking (permutation ROC-AUC drop of 0.077 and 0.057). A sharp move in either is worth a look even outside the formal top-K queue.</p>
+      </div>
+    </div>
+    <div class="reco">
+      <div class="reco-n">5</div>
+      <div class="reco-body">
+        <h4>Re-check precision@K as new data windows arrive</h4>
+        <p>These numbers come from one snapshot and one split — treat them as a current read to monitor, not a permanent guarantee.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="repro">
+  <div class="wrap">
+    <span class="sec-num">07 — Reproducibility</span>
+    <h2>Rerun this end to end</h2>
+    <p>Every step above runs from two notebooks in the project repository, both seeded with <code>random_state = 42</code>:</p>
+    <ul>
+      <li><code>work/notebooks/w04_baseline_score.ipynb</code> — builds the rule baseline, reason codes, and signal checks.</li>
+      <li><code>work/notebooks/w05_model.ipynb</code> — trains and compares the three models against the baseline on the client-held-out split.</li>
+    </ul>
+    <p>Clone the repo, open either notebook in Google Colab (badges are pre-wired), and choose <strong>Runtime → Run all</strong>.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="credit-box">
+      Built on the <strong>FlyRank ML Internship dataset</strong> — <a href="https://flyrank.ai" target="_blank" rel="noopener">flyrank.ai</a>.<br>
+      Full code and notebooks: <a href="https://github.com/fmarryam70-ux/flyrank-ml-internship" target="_blank" rel="noopener">github.com/fmarryam70-ux/flyrank-ml-internship</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
